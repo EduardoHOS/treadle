@@ -1,0 +1,14 @@
+# Normalise everything to LF in the repository, and check out LF on every platform.
+# The benchmark compares files byte-for-byte, so line endings must not vary by host.
+* text=auto eol=lf
+
+# Fixtures and vendored schemas are stored exactly as published upstream, in LF.
+# They are diffable text, not binary — a corpus repo needs readable diffs.
+*.bpmn text eol=lf
+*.xsd  text eol=lf
+
+# Keep vendored and generated files out of language stats and review diffs.
+third_party/**                  linguist-vendored
+bench/corpus/miwg/**            linguist-vendored
+bench/tasks/CORPUS-INVENTORY.md linguist-generated
+package-lock.json               linguist-generated

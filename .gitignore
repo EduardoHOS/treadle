@@ -1,6 +1,59 @@
+# Dependencies
 node_modules/
-bench/results/*.json
-bench/results/**/*.bpmn
+.pnpm-store/
+.yarn/
+jspm_packages/
+
+# Build output
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Benchmark output — regenerate with `npm run bench`, never commit
+bench/results/
 *.bpmn.rt
+*.bpmn.out
+
+# Local toolchain pins (machine-specific paths)
 .node22path
+.nvmrc.local
+
+# Scratch and research material fetched during development
 reference/
+scratch/
+tmp/
+
+# Logs and diagnostics
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm/
+coverage/
+.nyc_output/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editor and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# AI assistant local state — never published
+.claude/
+.cursor/
+.aider*
+CLAUDE.local.md
