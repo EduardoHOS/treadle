@@ -117,16 +117,38 @@ export function boundsList(xml) {
   return new Map(out);
 }
 
+// Gate 5. The question is not "did anything move" — inserting a node into a tight
+// gap has to make room — but "did the diagram get REFLOWED". Making room is a rigid
+// translation: every shape that moved moved by the same delta. A relayout scrambles
+// them into many different deltas. That distinction is the whole gate.
 export function diffSanity(beforeXml, afterXml) {
   const A = beforeXml.split('\n'), B = afterXml.split('\n');
   const bag = new Map();
   for (const l of B) bag.set(l, (bag.get(l) || 0) + 1);
   let common = 0;
   for (const l of A) { const c = bag.get(l); if (c > 0) { common++; bag.set(l, c - 1); } }
+
   const before = boundsList(beforeXml), after = boundsList(afterXml);
+  const deltas = new Map();
   let moved = 0;
-  for (const [id, pos] of before) if (after.has(id) && after.get(id) !== pos) moved++;
-  return { removedLines: A.length - common, addedLines: B.length - common, shapesMoved: moved, shapesTotal: before.size };
+  for (const [id, pos] of before) {
+    if (!after.has(id) || after.get(id) === pos) continue;
+    moved++;
+    const [x0, y0] = pos.split(',').map(Number);
+    const [x1, y1] = after.get(id).split(',').map(Number);
+    const d = `${x1 - x0},${y1 - y0}`;
+    deltas.set(d, (deltas.get(d) || 0) + 1);
+  }
+  const rigid = deltas.size <= 1;
+  return {
+    removedLines: A.length - common,
+    addedLines: B.length - common,
+    shapesMoved: moved,
+    shapesTotal: before.size,
+    distinctDeltas: deltas.size,
+    rigid,                                   // true = made room; false = reflowed
+    reflowed: !rigid,
+  };
 }
 
 // Measured 2026-09-01 against the 21 MIWG reference models: bpmnlint:correctness
@@ -148,6 +170,6 @@ export async function scoreAll(beforeXml, afterXml, opts = {}) {
   const g3 = { ok: hard.ok && introduced <= 0, correctness: hard, styleDelta: introduced, styleErrors: styleAfter.errors.length };
   const g5 = diffSanity(beforeXml, afterXml);
   const gates = { parses: g1, xsdValid: g2, lintClean: g3, noCollateral: g4, diffSanity: g5 };
-  const passed = [g1.ok, g2.ok, g3.ok, g4.ok, g5.shapesMoved === 0].filter(Boolean).length;
+  const passed = [g1.ok, g2.ok, g3.ok, g4.ok, g5.rigid].filter(Boolean).length;
   return { gates, passed, of: 5 };
 }

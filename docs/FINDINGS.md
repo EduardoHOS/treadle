@@ -151,3 +151,45 @@ Known ceiling: BPMN cross-references are mostly `xsd:QName`, which no schema
 validator resolves. Only sequence-flow source/target are `xsd:IDREF`. Reference
 integrity (dangling `attachedToRef`, missing `messageRef`, a participant pointing
 at a nonexistent process) needs a hand-written pass over the moddle tree.
+
+## F8 — BPMN stores adjacency twice, and moddle maintains only one side
+
+**2026-09-01 · `bench/arms/ir.mjs`, found by `place-selftest.mjs`**
+
+A sequence flow's connectivity lives in two places: on the flow
+(`sourceRef` / `targetRef`) and on each endpoint node (`<incoming>` / `<outgoing>`
+child elements). `moddle.create('bpmn:SequenceFlow', { sourceRef, targetRef })` sets
+only the flow side. The result is a file that is XSD-valid and parses fine, but where
+bpmnlint reports the new node as `no-disconnected`, `no-implicit-start` and
+`no-implicit-end` — because the linter reads the node side.
+
+This is the same structural hazard that makes text editing of BPMN unsafe, seen from
+the other direction: **a flow id appears three times in the XML, so any mutation that
+updates fewer than all three leaves the graph inconsistent.**
+
+Fixed by routing every mutation through `linkFlow` / `unlinkFlow` / `retarget`, which
+maintain both sides. Worth stating as a product invariant, not just a bug fix: no code
+path may set `sourceRef` or `targetRef` directly.
+
+## F9 — "made room" and "reflowed" are distinguishable, and that is the right gate
+
+**2026-09-01 · `bench/scorer/gates.mjs`, `bench/arms/place.mjs`**
+
+Inserting a node into a tight gap has to move downstream shapes — demanding zero
+movement would be demanding overlapping diagrams. But making room is a **rigid
+translation**: every shape that moves moves by the same delta. A relayout scatters
+them into many different deltas.
+
+So gate 5 tests `distinctDeltas <= 1`, not `shapesMoved === 0`.
+
+Measured on incremental placement across four real files:
+
+| file | shapes moved | distinct deltas | verdict |
+|---|---|---|---|
+| `handmade/zeebe-roundtrip` | 2 / 4 | 1 | made room |
+| `miwg/C.9.1` | 0 / 11 | 0 | gap was wide enough |
+| `miwg/C.9.0` | 17 / 26 | 1 | made room |
+| `miwg/A.1.0` | 3 / 5 | 1 | made room |
+
+All four stayed XSD-valid, `bpmnlint:correctness`-clean, introduced no new style
+errors, and ended at 100% DI coverage.
