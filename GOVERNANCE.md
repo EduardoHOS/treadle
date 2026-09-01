@@ -17,11 +17,13 @@ building on BPMN tooling have been burned by exactly this, and are right to ask.
 
 ## Commercial model
 
-Treadle is developed by a commercial entity. That is stated plainly rather than hidden,
-because the licence promise above only means something if you know who is making it.
+Treadle is maintainer-led and there is no company behind it today. There may be one
+later — the intent is to eventually fund the work commercially — and that is stated
+plainly rather than discovered later, because the licence promise above only means
+something if you know what pressures it is meant to survive.
 
-The boundary is **which repository code lives in, never a licence restriction on the
-core**:
+If that happens, the boundary is **which repository code lives in, never a licence
+restriction on the core**:
 
 - Everything in this repository — the MCP server, the CLI, the library, the linter,
   the benchmark — is Apache-2.0, and is the complete, unrestricted product for local and
@@ -47,11 +49,11 @@ after.
 
 ## Trademark
 
-The Treadle name and logo are held by the sponsoring entity and are not covered by the
-Apache-2.0 grant, which covers copyright and patents but not trademarks. You may say
-your software works with Treadle, is built on Treadle, or is a fork of Treadle. Please
-do not use the name in a way that implies the project endorses or maintains your
-distribution.
+The Treadle name is held by the maintainers and is not covered by the Apache-2.0 grant,
+which covers copyright and patents but not trademarks. No trademark registration has
+been filed yet. You may say your software works with Treadle, is built on Treadle, or is
+a fork of Treadle. Please do not use the name in a way that implies the project endorses
+or maintains your distribution.
 
 BPMN and the BPMN logo are trademarks of the Object Management Group. Camunda, Signavio
 and ARIS are trademarks of their respective owners. Treadle is not affiliated with,
