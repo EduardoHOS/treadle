@@ -1,0 +1,153 @@
+# Empirical findings
+
+Every number here was produced by a script in this repo, on this machine, on the
+dates given. Nothing is recalled or estimated. Re-run any of them yourself.
+
+Environment: Windows 11, Node 22.23.2 (portable), `bpmn-moddle@10.2.0`,
+`bpmn-auto-layout@2.0.0-alpha.2`, `bpmnlint@11.13.0`, `xmllint-wasm@5.3.0`.
+
+Corpus: the 21 BPMN MIWG reference models (`Reference/*.bpmn`, pinned at
+`cb26295`, 2026-03-11, CC BY 3.0) plus one hand-authored Camunda 8 file.
+
+---
+
+## F1 — bpmn-moddle round-trips Camunda 8 / Zeebe extensions losslessly
+
+**2026-09-01 · `bench/scorer/probe-roundtrip.mjs`**
+
+This was the day-one go/no-go for the moddle-as-source-of-truth architecture.
+Parse → serialize a file carrying `zeebe:taskDefinition` (with `retries`),
+`zeebe:ioMapping` (with FEEL expressions), `zeebe:taskHeaders`,
+`zeebe:formDefinition`, `zeebe:assignmentDefinition`, `zeebe:versionTag`,
+`modeler:executionPlatform`, and full DI.
+
+**Result: 15/15 probes kept, 0 parser warnings.** The architecture holds.
+
+## F2 — the corpus parses clean, and re-serialization is semantically exact
+
+**2026-09-01 · `bench/corpus/profile.mjs`**
+
+| measure | result |
+|---|---|
+| parse errors across 22 files | **0** |
+| semantically identical after round-trip | **22/22** |
+| idempotent (second pass byte-stable) | **22/22** |
+| byte-identical to the original | **1/22** |
+
+Byte-identity is the interesting one. moddle re-serializes the whole document, so
+output matches the input bytes only when the input was written by a moddle-based
+tool. The corpus spans nine different exporters (Signavio, Bonitasoft, W4, Camunda
+Web Modeler, Camunda Modeler, …), so most files get reformatted.
+
+## F3 — after normalization, an edit is a one-line diff and nothing moves
+
+**2026-09-01 · `bench/corpus/probe-diff-floor.mjs`**
+
+The promise under test: *"we only rewrite what you asked us to change."*
+Normalize each file, change exactly one task's `name`, re-serialize, diff.
+
+| measure | result |
+|---|---|
+| changed lines, one-attribute edit | **−1 +1 on all 22 files** |
+| worst case (1,710-line, 94-node file) | **−1 +1** |
+| `dc:Bounds` moved | **0 of 199** |
+| normalization cost, Camunda-authored files | **−1 +2, −1 +2, −0 +0** |
+| normalization cost, other exporters | full-file reformat |
+
+So the honest contract is Prettier's bargain: **the first edit normalizes
+formatting; every edit after that is minimal, and no shape ever moves.** Users
+whose files come from Camunda Modeler pay essentially nothing even for that.
+
+## F4 — bpmn-auto-layout fails on 41% of the OMG's own reference models
+
+**2026-09-01 · `bench/scorer/probe-layout.mjs`, `probe-layout-detail.mjs`**
+
+Strip all DI, run `layoutProcess`, then check DI *coverage*: every element that
+needs a shape or edge must have got one. Silent partial layout is the failure that
+ships broken diagrams, so coverage is the gate — not "no exception thrown".
+
+| outcome | files |
+|---|---|
+| complete (100% shape and edge coverage) | **13 / 22** |
+| incomplete — silent partial layout | **8 / 22** |
+| hard crash | **1 / 22** |
+
+Worst case `C.4.0`: **55 of 107 elements got no DI**, losing 3 of 4 participants
+and everything inside them — with **zero warnings emitted**.
+
+Confirmed against three input variants (raw, normalized, DI-stripped) with
+identical results, so this is a layouter limitation, not a preprocessing artefact.
+
+Failure modes, by cause:
+
+- `bpmn:DataInput` / data associations are unsupported — throws
+  `LayoutError: Cannot generate DI for visual BPMN element "bpmn:DataInput"` on
+  raw input, silently drops `DataInputAssociation` / `DataOutputAssociation` otherwise
+  (`C.7.0`, `C.8.1` — 29 associations lost)
+- `bpmn:Group` unsupported: `GROUP_MEMBERS_NOT_FOUND`, and the group's members
+  lose their DI too (`B.1.0`)
+- multi-pool collaborations lose whole participants, silently (`C.4.0`)
+- `A.4.0` crashes with a bare `TypeError: Cannot read properties of undefined
+  (reading 'id')` — not a typed `LayoutError`, so it is not catchable by code
+
+**The `warnings` channel does not reliably signal loss.** `C.4.0` lost 52 elements
+and reported none. Any pipeline that relies on this package must run its own
+coverage check.
+
+### Why this reshapes the product
+
+Every competitor in this space — Camunda's BPMN Copilot, `Stieges/bpmn-generator`,
+BA Copilot — is built on the greenfield path: *text → whole diagram → auto-layout*.
+That path rests on a layout engine that fails on 41% of the OMG working group's own
+reference models.
+
+Treadle's wedge is editing files that already have DI, where we place only new
+elements next to their neighbours. That is roughly 200 lines we control, not a
+layout engine we depend on. **The finding strengthens edit-first and weakens
+generate-first**, which is the opposite of where the original plan put its weight.
+
+## F5 — `bpmnlint:correctness` is a fair gate; `recommended` is a style opinion
+
+**2026-09-01 · `bench/scorer/baseline.mjs`, `probe-presets.mjs`**
+
+| preset | reference models passing |
+|---|---|
+| `bpmnlint:correctness` | **22 / 22** |
+| `bpmnlint:recommended` | **9 / 22** (0/12 of the non-trivial ones) |
+| `bpmnlint:all` | **0 / 12** |
+
+The OMG's own reference models violate `recommended` 59% of the time — mostly
+`label-required` (30), `no-bpmndi` (10), `end-event-required` (5).
+
+Scorer consequence: **correctness is a hard pass/fail gate; recommended is only
+meaningful differentially** — did this edit introduce style errors that were not
+already in the file? Scoring an arm against absolute `recommended` cleanliness
+would penalise it for the input file's pre-existing sins.
+
+## F6 — the real reason for the Node 22.12 floor
+
+**2026-09-01**
+
+`bpmnlint@11.13.0` is CommonJS and `require()`s `min-dash@5`, which is ESM-only.
+On Node 20.10 that is a hard `ERR_REQUIRE_ESM`. It works on Node 22.12+ only
+because that release enables `require(esm)` by default.
+
+`bpmn-auto-layout@2.0.0-alpha.2` declares `engines: { node: ">= 18" }` and does in
+fact run correctly on Node 20.10 — so the Node floor comes from bpmnlint, not from
+the layouter as previously assumed.
+
+## F7 — the OMG XSDs validate the whole corpus
+
+**2026-09-01 · `bench/scorer/gates.mjs`**
+
+All five schemas fetched from `omg.org/spec/BPMN/20100501/` (200 OK, 73 KB total),
+vendored unmodified under `third_party/omg/`, wired through `xmllint-wasm` with
+relative `schemaLocation` resolution via `preload`.
+
+**22/22 files validate.** The XSD gate is correctly calibrated — a failure means
+the generated file is genuinely malformed, not that the gate is too strict.
+
+Known ceiling: BPMN cross-references are mostly `xsd:QName`, which no schema
+validator resolves. Only sequence-flow source/target are `xsd:IDREF`. Reference
+integrity (dangling `attachedToRef`, missing `messageRef`, a participant pointing
+at a nonexistent process) needs a hand-written pass over the moddle tree.

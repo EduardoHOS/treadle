@@ -1,0 +1,20 @@
+{
+  "name": "treadle-bench",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Week-1 bake-off harness for Treadle: does a structured patch API make an LLM more correct at editing BPMN than editing the XML directly?",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "score": "node bench/scorer/score.js",
+    "corpus:verify": "node bench/corpus/verify.js"
+  },
+  "dependencies": {
+    "bpmn-auto-layout": "^2.0.0-alpha.2",
+    "bpmn-moddle": "^10.2.0",
+    "bpmnlint": "^11.13.0",
+    "xmllint-wasm": "^5.3.0"
+  }
+}

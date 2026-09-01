@@ -1,0 +1,6 @@
+node_modules/
+bench/results/*.json
+bench/results/**/*.bpmn
+*.bpmn.rt
+.node22path
+reference/
