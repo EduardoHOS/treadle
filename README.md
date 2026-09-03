@@ -6,10 +6,10 @@ without wrecking the diagram.**
 An open-source MCP server, CLI and library for BPMN 2.0. Engine-neutral, file-native,
 no account, no server, works offline. Apache-2.0.
 
-> Status: **week 0.** No product code yet. This repo currently holds the benchmark
-> harness that decides how the product gets built. See [docs/FINDINGS.md](docs/FINDINGS.md)
-> for what has been measured and [docs/DECISIONS.md](docs/DECISIONS.md) for what was
-> decided on the strength of it.
+> Status: **week 0.** The structured benchmark arm is now the functional core in
+> `backend/core/`; the CLI, MCP server, and published library do not exist yet. See
+> [docs/FINDINGS.md](docs/FINDINGS.md) for what has been measured and
+> [docs/DECISIONS.md](docs/DECISIONS.md) for what was decided on the strength of it.
 
 ---
 
@@ -47,6 +47,9 @@ Details and repro steps: [docs/FINDINGS.md](docs/FINDINGS.md).
 ## Repo layout
 
 ```
+backend/        the functional product core and its tests
+  core/         parse, project, patch and incrementally place BPMN
+  test/         unit and integration tests for the core
 bench/          the week-1 bake-off harness
   corpus/       BPMN fixtures + profilers (see corpus/PROVENANCE.md)
   scorer/       the five scoring gates
@@ -61,16 +64,26 @@ docs/           findings, decisions
 Needs Node 22.12+ ([why](docs/FINDINGS.md#f6--the-real-reason-for-the-node-2212-floor)).
 
 ```bash
-npm install
+npm ci
+npm run check
+```
+
+`npm run check` runs lint, the backend test suite with 100% core coverage, and
+the 22-file corpus integrity gate. Individual benchmark probes remain available:
+
+```bash
 node bench/corpus/profile.mjs bench/corpus
 node bench/corpus/probe-diff-floor.mjs bench/corpus
 node bench/scorer/probe-layout.mjs bench/corpus
 node bench/scorer/baseline.mjs bench/corpus
 ```
 
+Repository and pull request conventions are defined in [CLAUDE.md](CLAUDE.md);
+[AGENTS.md](AGENTS.md) routes other coding agents to the same guide.
+
 ## The bake-off
 
-Before any product code, three arms are scored on the same tasks by the same gates:
+The original three arms were scored on the same tasks by the same gates:
 
 - **A — naive.** Read the whole file, edit with find-and-replace, write back.
 - **B — strong baseline.** Edit the XML directly, then post-process with bpmnlint and
