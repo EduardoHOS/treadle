@@ -154,7 +154,8 @@ at a nonexistent process) needs a hand-written pass over the moddle tree.
 
 ## F8 — BPMN stores adjacency twice, and moddle maintains only one side
 
-**2026-09-01 · `bench/arms/ir.mjs`, found by `place-selftest.mjs`**
+**2026-09-01 · now enforced by `backend/core/adjacency.mjs` and
+`backend/test/unit/patch.test.mjs`**
 
 A sequence flow's connectivity lives in two places: on the flow
 (`sourceRef` / `targetRef`) and on each endpoint node (`<incoming>` / `<outgoing>`
@@ -173,7 +174,8 @@ path may set `sourceRef` or `targetRef` directly.
 
 ## F9 — "made room" and "reflowed" are distinguishable, and that is the right gate
 
-**2026-09-01 · `bench/scorer/gates.mjs`, `bench/arms/place.mjs`**
+**2026-09-01 · `bench/scorer/gates.mjs`, now implemented by
+`backend/core/placement.mjs`**
 
 Inserting a node into a tight gap has to move downstream shapes — demanding zero
 movement would be demanding overlapping diagrams. But making room is a **rigid

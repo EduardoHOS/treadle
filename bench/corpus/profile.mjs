@@ -41,7 +41,7 @@ function tally(root) {
       if (t === 'bpmn:MessageFlow') counts.msgFlows++;
       if (t === 'bpmn:SubProcess' || t === 'bpmn:AdHocSubProcess') counts.sub++;
       if (t === 'bpmn:BoundaryEvent') counts.boundary++;
-      if (/Gateway$/.test(t)) counts.gateways++;
+      if (t.endsWith('Gateway')) counts.gateways++;
       if (t === 'bpmndi:BPMNShape') counts.shapes++;
       if (t === 'bpmndi:BPMNEdge') counts.edges++;
       if (t === 'bpmn:ExtensionElements') counts.extensions++;
@@ -63,7 +63,7 @@ for (const file of walk(process.argv[2] || 'bench/corpus')) {
   const r = { file: file.split(sep).join('/').replace('bench/corpus/', ''), bytes: xml.length };
   const exporter = xml.match(/exporter="([^"]*)"/);
   r.exporter = exporter ? exporter[1] : '';
-  r.vendorExt = (xml.match(/(camunda|zeebe|activiti|flowable|signavio):[a-z]/i) || [, '-'])[1];
+  r.vendorExt = xml.match(/(camunda|zeebe|activiti|flowable|signavio):[a-z]/i)?.[1] ?? '-';
   try {
     const { rootElement, warnings } = await moddle.fromXML(xml);
     Object.assign(r, tally(rootElement));
